@@ -63,7 +63,11 @@ class Borrow(Base):
 	book: Mapped["Book"] = relationship("Book", back_populates="borrowed")
 
 	def to_dict(self) -> dict[str, Any]:
-		return {
+		data = {
 			column.name: getattr(self, column.name)
 			for column in self.__table__.columns
 		}
+		# Include the related book if loaded
+		if self.book:
+			data["book"] = self.book.to_dict()
+		return data

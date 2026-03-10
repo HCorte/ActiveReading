@@ -1,5 +1,5 @@
-from sqlalchemy.orm import Session
-from app.db.models import Borrow
+from sqlalchemy.orm import Session, joinedload
+from app.db.models import Book, Borrow
 
 
 def create_borrow(db: Session, borrow: Borrow) -> Borrow:
@@ -17,7 +17,13 @@ def get_all_borrows(db: Session) -> list[Borrow]:
     return db.query(Borrow).all()
 
 def get_all_borrows_by_requester(db: Session, requester: str) -> list[Borrow]:
-    return db.query(Borrow).join(Borrow.book).filter(Borrow.borrower_name == requester).all()
+    return (
+        db.query(Borrow)
+        .join(Book, Borrow.book_id == Book.id)
+        .filter(Borrow.borrower_name == requester)
+        .options(joinedload(Borrow.book))  # eagerly loads the book relation
+        .all()
+    )
 
 def get_requester_list(db: Session) -> list[str]:
     requesters = [row[0] for row in db.query(Borrow.borrower_name).distinct().all()]

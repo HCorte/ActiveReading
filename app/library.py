@@ -252,6 +252,61 @@ def list_borrowed_books_by_person(page, requester):
         with get_db() as db:
             borrowed_books = get_all_borrows_by_requester(db, requester=requester.value)
             print("borrowed_books:\n", borrowed_books)
+            
+            for borrow in borrowed_books:
+                print("borrow:\n",borrow.to_dict())
+
+                # if borrow.return_date == "Agendada":
+
+                #     estado = f.Icon(f.Icons.ALARM, color=f.Colors.ORANGE)
+
+                # elif borrow.status == "Cancelada":
+                #     estado = f.Icon(f.Icons.CANCEL, color=f.Colors.RED)
+
+                # else:
+                #     estado = f.Icon(f.Icons.CALENDAR_MONTH, color=f.Colors.GREEN)
+
+                # lista.controls.append(
+
+                #     f.Card(
+                #         content=f.Container(
+                #             padding=12,
+                #             content=f.Row(
+                #                 [
+                #                     f.Column(
+                #                         [
+                #                             f.Text(f"Paciente: {consult.pacient.name}", size=14,
+                #                                 weight=f.FontWeight.BOLD),
+                #                             f.Text(f"Médico: {consult.medic.name}", size=12),
+                #                             f.Text(f"Data: {consult.date}", size=12),
+                #                             estado
+                #                         ],
+                #                         spacing=5,
+                #                     ),
+                #                     # f.Row(
+                #                     #     [
+                #                     #         f.IconButton(
+                #                     #             f.Icons.EDIT,
+                #                     #             icon_color=f.Colors.BLUE,
+                #                     #             tooltip="Atualizar",
+                #                     #             on_click=lambda e, p=consult: atualizar_consulta(page, p),
+                #                     #         ),
+                #                     #         f.IconButton(
+                #                     #             f.Icons.DELETE,
+                #                     #             icon_color=f.Colors.RED,
+                #                     #             tooltip="Apagar",
+                #                     #             on_click=lambda e, p=consult: apagar_consulta(page, p),
+                #                     #         ),
+                #                     #     ]
+                #                     # )
+
+                #                 ],
+                #                 alignment=f.MainAxisAlignment.SPACE_BETWEEN,
+                #             )
+                #         ),
+                #         elevation=2
+                #     )
+                # )
 
 
     lista.controls.clear()
@@ -270,59 +325,6 @@ def list_borrowed_books_by_person(page, requester):
             expand=True
         )
     ) 
-        # for borrow in borrowed_books:
-
-            # if borrow.return_date == "Agendada":
-
-            #     estado = f.Icon(f.Icons.ALARM, color=f.Colors.ORANGE)
-
-            # elif borrow.status == "Cancelada":
-            #     estado = f.Icon(f.Icons.CANCEL, color=f.Colors.RED)
-
-            # else:
-            #     estado = f.Icon(f.Icons.CALENDAR_MONTH, color=f.Colors.GREEN)
-
-            # lista.controls.append(
-
-            #     f.Card(
-            #         content=f.Container(
-            #             padding=12,
-            #             content=f.Row(
-            #                 [
-            #                     f.Column(
-            #                         [
-            #                             f.Text(f"Paciente: {consult.pacient.name}", size=14,
-            #                                 weight=f.FontWeight.BOLD),
-            #                             f.Text(f"Médico: {consult.medic.name}", size=12),
-            #                             f.Text(f"Data: {consult.date}", size=12),
-            #                             estado
-            #                         ],
-            #                         spacing=5,
-            #                     ),
-            #                     # f.Row(
-            #                     #     [
-            #                     #         f.IconButton(
-            #                     #             f.Icons.EDIT,
-            #                     #             icon_color=f.Colors.BLUE,
-            #                     #             tooltip="Atualizar",
-            #                     #             on_click=lambda e, p=consult: atualizar_consulta(page, p),
-            #                     #         ),
-            #                     #         f.IconButton(
-            #                     #             f.Icons.DELETE,
-            #                     #             icon_color=f.Colors.RED,
-            #                     #             tooltip="Apagar",
-            #                     #             on_click=lambda e, p=consult: apagar_consulta(page, p),
-            #                     #         ),
-            #                     #     ]
-            #                     # )
-
-            #                 ],
-            #                 alignment=f.MainAxisAlignment.SPACE_BETWEEN,
-            #             )
-            #         ),
-            #         elevation=2
-            #     )
-            # )
 
 
 # def listar_total(page):
