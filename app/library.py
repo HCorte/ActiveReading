@@ -257,15 +257,11 @@ def list_borrowed_books_by_person(page, requester):
             for borrow in borrowed_books:
                 print("borrow:\n",borrow.to_dict())
 
-                # if borrow.return_date == "Agendada":
-
-                #     estado = f.Icon(f.Icons.ALARM, color=f.Colors.ORANGE)
-
-                # elif borrow.status == "Cancelada":
-                #     estado = f.Icon(f.Icons.CANCEL, color=f.Colors.RED)
-
-                # else:
-                #     estado = f.Icon(f.Icons.CALENDAR_MONTH, color=f.Colors.GREEN)
+                # assuming that everyone is responsable and returns before the limit date... (yes unlikely)
+                if borrow.return_date >= datetime.now(tz=ZoneInfo("UTC")).strftime("%d/%m/%Y-%H:%M:%S"):
+                    status = f.Icon(f.Icons.ALARM, color=f.Colors.ORANGE)
+                else:
+                    status = f.Icon(f.Icons.APPROVAL, color=f.Colors.GREEN)
 
                 lista.controls.append(
 
@@ -281,7 +277,7 @@ def list_borrowed_books_by_person(page, requester):
                                             f.Text(f"Borrow Date: {borrow.borrow_date}", size=12),
                                             f.Text(f"Author: {borrow.book.author}", size=12),
                                             f.Text(f"Catogory: {borrow.book.category}", size=12),
-                                            # estado
+                                            status
                                         ],
                                         spacing=5,
                                     ),
