@@ -124,9 +124,10 @@ def main(page: f.Page):
                 year,
             )
 
-        # elif nomes == "Total":
+        elif nomes == "Borrowed Books":
+            requester = f.TextField(label="Person Requesting", width=300)
 
-        #     listar_total(page)
+            list_borrowed_books_by_person(page, requester=requester)
 
         # elif nomes == "Consultas_Realizadas":
 
@@ -145,8 +146,8 @@ def main(page: f.Page):
                              on_click=lambda e1: menu_click("Borrow")),
                 f.TextButton("Add Book to Library", icon=f.Icons.LIST, style=f.ButtonStyle(f.Colors.WHITE),
                              on_click=lambda e1: menu_click("Book")),
-                # f.TextButton("Consultas Realizadas", icon=f.Icons.CATEGORY, style=f.ButtonStyle(f.Colors.WHITE),
-                #              on_click=lambda e1: menu_click("Consultas_Realizadas")),
+                f.TextButton("Borrowed Books List", icon=f.Icons.CATEGORY, style=f.ButtonStyle(f.Colors.WHITE),
+                             on_click=lambda e1: menu_click("Borrowed Books")),
                 # f.TextButton("Consultas Paciente", icon=f.Icons.CATEGORY, style=f.ButtonStyle(f.Colors.WHITE),
                 #              on_click=lambda e1: menu_click("Consultas_Paciente")),
                 # f.TextButton("Total Consultas", icon=f.Icons.SUMMARIZE, style=f.ButtonStyle(f.Colors.WHITE),

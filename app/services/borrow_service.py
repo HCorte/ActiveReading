@@ -16,6 +16,9 @@ def get_borrow(db: Session, borrow_id: int) -> Borrow | None:
 def get_all_borrows(db: Session) -> list[Borrow]:
     return db.query(Borrow).all()
 
+def get_all_borrows_by_requester(db: Session, requester: str) -> list[Borrow]:
+    return db.query(Borrow).filter(Borrow.borrower_name == requester)
+
 def update_borrow(db: Session, borrow_id: int, data: dict) -> Borrow | None:
     borrow = db.query(Borrow).filter(Borrow.id == borrow_id).first()
     if not borrow:

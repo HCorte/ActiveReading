@@ -1,6 +1,6 @@
 from zoneinfo import ZoneInfo
 import flet as f
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from app.services.library_service import *
 from app.services.book_service import *
 from app.services.borrow_service import *
@@ -24,88 +24,6 @@ lista = f.ListView(
     padding=10,
     expand=True
 )
-
-
-
-# def registar_consulta_db(page, nome, medico, estado, data):
-
-#     def selecionar_data(e):
-
-#         if page.date_picker.value:
-
-#             data.value = page.date_picker.value.strftime("%d/%m/%Y")
-
-#             page.update()
-
-#     page.date_picker = f.DatePicker(on_change=selecionar_data)
-
-#     page.overlay.append(page.date_picker)
-
-#     def abrir_datepicker(e):
-
-#         page.date_picker.open = True
-#         page.update()
-
-#     def guardar_dados():
-
-#         if nome.value.strip() and medico.value != "Escolha um Médico" and estado.value != "Escolha uma Opção" and data.value:
-
-
-#                     data_value = data.value
-#                     status_value = estado.value
-#                     medic_value = int(medico.value) if medico.value is not None else None  # Convert the key to an integer if not None
-#                     print("\n\n",f"Data: {data_value}, Status: {status_value}, Medic ID: {medic_value}", "\n\n")
-#                     with get_db() as db:
-#                         consult = Consult(
-#                             date=data_value,
-#                             status=status_value,
-#                             medic_id=medic_value, 
-#                             pacient_id=1,
-#                         )
-#                         consult = create_consult(db, consult)
-#                         print(consult)
-#                     page.show_dialog(
-#                         f.SnackBar(
-#                             f.Text("Consulta Registada com Sucesso!"), bgcolor=f.Colors.BLUE, duration=1000
-#                         )
-#                     )
-#         else:
-#             page.show_dialog(
-#                 f.SnackBar(
-#                     f.Text("Os campos são de preenchimento obrigatório!"), bgcolor=f.Colors.RED, duration=1000
-#                 )
-#             )
-
-#         nome.value = ""
-#         medico.value = None
-#         estado.value = None
-
-#         page.update()
-#     page.add(
-#         f.Container(
-#             content=f.Column(
-#                 [
-#                     f.Text("Registar Consulta", size=30),
-#                     nome,
-#                     medico,
-#                     estado,
-#                     f.Row(
-#                       [
-#                           data,
-#                           f.IconButton(f.Icons.CALENDAR_MONTH, on_click=abrir_datepicker),
-#                       ],
-#                       alignment=f.MainAxisAlignment.CENTER
-#                     ),
-#                     f.Button("Guardar Dados", on_click=guardar_dados)
-#                 ],
-#                 spacing=20,  # espaçamento entre os elementos
-#                 horizontal_alignment=f.CrossAxisAlignment.CENTER,
-#             ),
-#             alignment=f.alignment.Alignment.CENTER,
-#             expand=True
-#         )
-#     )
-
 
 def borrow_book_from_library(
     page,
@@ -145,12 +63,17 @@ def borrow_book_from_library(
         on_change=on_code_autofill  # fires on check/uncheck
     )
 
-    def selecionar_data(e):
+    def on_date_selected(e):
         if page.date_picker.value:
             return_date.value = page.date_picker.value.strftime("%d/%m/%Y")
             page.update()
 
-    page.date_picker = f.DatePicker(on_change=selecionar_data)
+    #page.date_picker = f.DatePicker(on_change=on_date_selected)
+    page.date_picker = f.DatePicker(
+        first_date=datetime.now(timezone.utc) + timedelta(days=1),  # tomorrow as minimum
+        value=datetime.now(timezone.utc) + timedelta(days=1),       # default selected date
+        on_change=on_date_selected,
+    )
     page.overlay.append(page.date_picker)
 
     def abrir_datepicker(e):
@@ -268,6 +191,20 @@ def add_book_to_library(
                 )
                 create_book(db, book=book) # method to create a book record in the database
                 # only after the book record is created successfully in the database the fields can be cleared
+                # for now also add to the default library it should be possible to define when creating the Book record into db but this was simpler for now...
+                # preperaded for later on to select a library instead of the predefining one as default
+                library = get_library(db, library_id=1)
+                print(f"fetched library:", library)
+                if library:
+                    library_id = library.id
+                    add_book_to_library_db(db, library_id=library_id, book=book)
+                    print(f"successfull associated to the library:", library.to_dict())
+                else:
+                    page.show_dialog(
+                        f.SnackBar(
+                            f.Text("Missing Default Library! - Contact Platform Admin"), bgcolor=f.Colors.ORANGE, duration=1000
+                        )
+                    )
                 title.value = ""
                 code.value = ""
                 author.value = ""
@@ -308,90 +245,64 @@ def add_book_to_library(
         )
     )       
 
-# def registar_consulta(page, nome, medico, estado, data):
+def list_borrowed_books_by_person(page, requester):
 
-#     def selecionar_data(e):
+    lista.controls.clear()
+    with get_db() as db:
+        borrowed_books = get_all_borrows_by_requester(db, requester=requester.value.strip())
+        for borrow in borrowed_books:
 
-#         if page.date_picker.value:
+            if borrow.return_date == "Agendada":
 
-#             data.value = page.date_picker.value.strftime("%d/%m/%Y")
+                estado = f.Icon(f.Icons.ALARM, color=f.Colors.ORANGE)
 
-#             page.update()
+            elif borrow.status == "Cancelada":
+                estado = f.Icon(f.Icons.CANCEL, color=f.Colors.RED)
 
-#     page.date_picker = f.DatePicker(on_change=selecionar_data)
+            else:
+                estado = f.Icon(f.Icons.CALENDAR_MONTH, color=f.Colors.GREEN)
 
-#     page.overlay.append(page.date_picker)
+            lista.controls.append(
 
-#     def abrir_datepicker(e):
+                f.Card(
+                    content=f.Container(
+                        padding=12,
+                        content=f.Row(
+                            [
+                                f.Column(
+                                    [
+                                        f.Text(f"Paciente: {consult.pacient.name}", size=14,
+                                            weight=f.FontWeight.BOLD),
+                                        f.Text(f"Médico: {consult.medic.name}", size=12),
+                                        f.Text(f"Data: {consult.date}", size=12),
+                                        estado
+                                    ],
+                                    spacing=5,
+                                ),
+                                # f.Row(
+                                #     [
+                                #         f.IconButton(
+                                #             f.Icons.EDIT,
+                                #             icon_color=f.Colors.BLUE,
+                                #             tooltip="Atualizar",
+                                #             on_click=lambda e, p=consult: atualizar_consulta(page, p),
+                                #         ),
+                                #         f.IconButton(
+                                #             f.Icons.DELETE,
+                                #             icon_color=f.Colors.RED,
+                                #             tooltip="Apagar",
+                                #             on_click=lambda e, p=consult: apagar_consulta(page, p),
+                                #         ),
+                                #     ]
+                                # )
 
-#         page.date_picker.open = True
-#         page.update()
-
-#     def guardar_dados():
-
-#         if nome.value.strip() and medico.value != "Escolha um Médico" and estado.value != "Escolha uma Opção" and data.value:
-
-#             # if not all(part.isalpha() for part in nome.value.split()):
-#             #     page.show_dialog(
-#             #         f.SnackBar(
-#             #             f.Text("O nome do paciente só pode conter letras!"),
-#             #             bgcolor=f.Colors.RED,
-#             #             duration=1000
-#             #         )
-#             #     )
-
-#             # else:
-
-#                 novo_paciente = Paciente(nome.value, medico.value, estado.value, data.value)
-#                 if ficheiros_paciente.validar_consulta(novo_paciente):
-#                     page.show_dialog(
-#                         f.SnackBar(
-#                             f.Text("Já existe uma consulta regista para o Médico e/ou Paciente nesse dia!"), bgcolor=f.Colors.RED, duration=1000
-#                         )
-#                     )
-#                 else:
-#                     ficheiros_paciente.guardar_no_ficheiro(novo_paciente)
-#                     page.show_dialog(
-#                         f.SnackBar(
-#                             f.Text("Consulta Registada com Sucesso!"), bgcolor=f.Colors.BLUE, duration=1000
-#                         )
-#                     )
-#         else:
-#             page.show_dialog(
-#                 f.SnackBar(
-#                     f.Text("Os campos são de preenchimento obrigatório!"), bgcolor=f.Colors.RED, duration=1000
-#                 )
-#             )
-
-#         nome.value = ""
-#         medico.value = None
-#         estado.value = None
-
-#         page.update()
-#         page.add(
-#             f.Container(
-#                 content=f.Column(
-#                     [
-#                         f.Text("Registar Consulta", size=30),
-#                         nome,
-#                         medico,
-#                         estado,
-#                         f.Row(
-#                         [
-#                             data,
-#                             f.IconButton(f.Icons.CALENDAR_MONTH, on_click=abrir_datepicker),
-#                         ],
-#                         alignment=f.MainAxisAlignment.CENTER
-#                         ),
-#                         f.Button("Guardar Dados", on_click=guardar_dados)
-#                     ],
-#                     spacing=20,  # espaçamento entre os elementos
-#                     horizontal_alignment=f.CrossAxisAlignment.CENTER,
-#                 ),
-#                 alignment=f.alignment.Alignment.CENTER,
-#                 expand=True
-#             )
-#         )
+                            ],
+                            alignment=f.MainAxisAlignment.SPACE_BETWEEN,
+                        )
+                    ),
+                    elevation=2
+                )
+            )
 
 
 # def listar_total(page):
@@ -425,63 +336,6 @@ def add_book_to_library(
 #         page.update()
 
 
-# def listagem(page):
-#     lista.controls.clear()
-#     with get_db() as db:
-#         consults = get_all_consults(db)
-#         for consult in consults:
-
-#             if consult.status == "Agendada":
-
-#                 estado = f.Icon(f.Icons.ALARM, color=f.Colors.ORANGE)
-
-#             elif consult.status == "Cancelada":
-#                 estado = f.Icon(f.Icons.CANCEL, color=f.Colors.RED)
-
-#             else:
-#                 estado = f.Icon(f.Icons.CALENDAR_MONTH, color=f.Colors.GREEN)
-
-#             lista.controls.append(
-
-#                 f.Card(
-#                     content=f.Container(
-#                         padding=12,
-#                         content=f.Row(
-#                             [
-#                                 f.Column(
-#                                     [
-#                                         f.Text(f"Paciente: {consult.pacient.name}", size=14,
-#                                             weight=f.FontWeight.BOLD),
-#                                         f.Text(f"Médico: {consult.medic.name}", size=12),
-#                                         f.Text(f"Data: {consult.date}", size=12),
-#                                         estado
-#                                     ],
-#                                     spacing=5,
-#                                 ),
-#                                 # f.Row(
-#                                 #     [
-#                                 #         f.IconButton(
-#                                 #             f.Icons.EDIT,
-#                                 #             icon_color=f.Colors.BLUE,
-#                                 #             tooltip="Atualizar",
-#                                 #             on_click=lambda e, p=consult: atualizar_consulta(page, p),
-#                                 #         ),
-#                                 #         f.IconButton(
-#                                 #             f.Icons.DELETE,
-#                                 #             icon_color=f.Colors.RED,
-#                                 #             tooltip="Apagar",
-#                                 #             on_click=lambda e, p=consult: apagar_consulta(page, p),
-#                                 #         ),
-#                                 #     ]
-#                                 # )
-
-#                             ],
-#                             alignment=f.MainAxisAlignment.SPACE_BETWEEN,
-#                         )
-#                     ),
-#                     elevation=2
-#                 )
-#             )
 
 
 # def listar_consultas(page):
