@@ -16,8 +16,13 @@ def get_borrow(db: Session, borrow_id: int) -> Borrow | None:
 def get_all_borrows(db: Session) -> list[Borrow]:
     return db.query(Borrow).all()
 
-def get_all_borrows_by_requester(db: Session, requester: str) -> list[Borrow]:
-    return db.query(Borrow).filter(Borrow.borrower_name == requester)
+# def get_all_borrows_by_requester(db: Session, requester: str) -> list[Borrow]:
+#     return db.query(Borrow).filter(Borrow.borrower_name == requester)
+
+def get_requester_list(db: Session) -> list[str]:
+    requesters = [row[0] for row in db.query(Borrow.borrower_name).distinct().all()]
+    print("requesters list:\n", requesters)
+    return requesters
 
 def update_borrow(db: Session, borrow_id: int, data: dict) -> Borrow | None:
     borrow = db.query(Borrow).filter(Borrow.id == borrow_id).first()

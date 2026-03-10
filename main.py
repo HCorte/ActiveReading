@@ -125,9 +125,19 @@ def main(page: f.Page):
             )
 
         elif nomes == "Borrowed Books":
-            requester = f.TextField(label="Person Requesting", width=300)
+            with get_db() as db:
+                requester = f.Dropdown(
+                    label="Requester",
+                    hint_text="Filter by Requester",
+                    width=300,
+                    options=[
+                            f.DropdownOption(key=requester, text=requester)
+                            for requester in get_requester_list(db)
+                    ]
+                )
 
-            list_borrowed_books_by_person(page, requester=requester)
+                list_borrowed_books_by_person(page, requester=requester)
+            #f.TextField(label="Person Requesting", width=300)
 
         # elif nomes == "Consultas_Realizadas":
 
