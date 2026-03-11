@@ -44,6 +44,7 @@ class Book(Base):
 
 	# One book → one borrow record (FK lives on Borrow side)
 	borrowed: Mapped["Borrow"] = relationship("Borrow", back_populates="book") #, uselist=False
+	history: Mapped[list["History"]] = relationship("History", back_populates="book")
 
 	def to_dict(self) -> dict[str, Any]:
 		return {
@@ -61,6 +62,28 @@ class Borrow(Base):
 	return_date: Mapped[str]
 
 	book: Mapped["Book"] = relationship("Book", back_populates="borrowed")
+
+	def to_dict(self) -> dict[str, Any]:
+		data = {
+			column.name: getattr(self, column.name)
+			for column in self.__table__.columns
+		}
+		# Include the related book if loaded
+		if self.book:
+			data["book"] = self.book.to_dict()
+		return data
+	
+class History(Base):
+	__tablename__ = 'history'
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	book_id: Mapped[int] = mapped_column(ForeignKey("book.id"))
+	borrower_name: Mapped[str]
+	borrow_date: Mapped[str]
+	return_date: Mapped[str]
+	date_returned: Mapped[str]
+
+	book: Mapped["Book"] = relationship("Book", back_populates="history")  # was "borrowed"
 
 	def to_dict(self) -> dict[str, Any]:
 		data = {

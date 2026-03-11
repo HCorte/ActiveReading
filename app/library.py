@@ -8,8 +8,6 @@ from app.db.database import SessionLocal, engine
 from contextlib import contextmanager
 from datetime import datetime
 
-base_dados = []
-
 @contextmanager
 def get_db():
     db = SessionLocal()
@@ -247,25 +245,87 @@ def add_book_to_library(
 
 def list_borrowed_books_by_person(page, requester):
 
+    data_ini = f.TextField(
+        label="Data Inicial",
+        read_only=True,
+        width=150,
+        # value=datetime.today().strftime("%d/%m/%Y")
+    )
+
+    def on_date_ini_selected():
+        if page.date_picker_ini.value: # datetime.now(tz=ZoneInfo("UTC")).strftime("%d/%m/%Y-%H:%M:%S")
+            data_ini.value = page.date_picker_ini.value.replace(tzinfo=timezone.utc).strftime("%d/%m/%Y")
+            page.update()
+
+    page.date_picker_ini = f.DatePicker(
+        # first_date=datetime.now(timezone.utc) + timedelta(days=1),  # tomorrow as minimum
+        # value=datetime.now(timezone.utc) + timedelta(days=1),       # default selected date
+        on_change=on_date_ini_selected,
+    )
+
+    date_fin = f.TextField(
+        label="Data Final",
+        read_only=True,
+        width=150,
+        # value=datetime.today().strftime("%d/%m/%Y")
+    )
+
+    def on_date_fin_selected():
+        if page.date_picker_fin.value: # datetime.now(tz=ZoneInfo("UTC")).strftime("%d/%m/%Y-%H:%M:%S")
+            date_fin.value = page.date_picker_fin.value.replace(tzinfo=timezone.utc).strftime("%d/%m/%Y")
+            page.update()
+
+    page.date_picker_fin = f.DatePicker(
+        # first_date=datetime.now(timezone.utc) + timedelta(days=1),  # tomorrow as minimum
+        # value=datetime.now(timezone.utc) + timedelta(days=1),       # default selected date
+        on_change=on_date_fin_selected,
+    )
+
+    page.overlay.append(page.date_picker_ini)
+    page.overlay.append(page.date_picker_fin)
+
+    def open_date_picker_ini():
+        page.date_picker_ini.open = True
+        page.update()
+
+    def open_date_picker_fin():
+        page.date_picker_fin.open = True
+        page.update()
+
+    def return_book_and_remove(db: Session, borrow: Borrow, card: f.Card):
+        return_book(db=db, borrow=borrow)
+        lista.controls.remove(card)
+        page.update()
     
     def showList():
-        lista.controls.clear()
-        with get_db() as db:
-            borrowed_books = get_all_borrows_by_requester(db, requester=requester.value)
-            print("borrowed_books:\n", borrowed_books)
-            
-            for borrow in borrowed_books:
-                print("borrow:\n",borrow.to_dict())
+        if not page.date_picker_ini.value and not page.date_picker_fin.value and not requester.value :
+            page.show_dialog(
+                f.SnackBar(
+                    f.Text("Need to chose at least one filter!"), bgcolor=f.Colors.RED, duration=1000
+                )
+            )
+        else:
+            lista.controls.clear()
+            with get_db() as db: 
+                borrowed_books = get_all_borrows_by_requester(db, requester=requester.value, init_date=page.date_picker_ini.value, final_date=page.date_picker_fin.value)
+                # print("borrowed_books:\n", borrowed_books)
 
-                # assuming that everyone is responsable and returns before the limit date... (yes unlikely)
-                if borrow.return_date >= datetime.now(tz=ZoneInfo("UTC")).strftime("%d/%m/%Y-%H:%M:%S"):
-                    status = f.Icon(f.Icons.ALARM, color=f.Colors.ORANGE)
-                else:
-                    status = f.Icon(f.Icons.APPROVAL, color=f.Colors.GREEN)
+                for borrow in borrowed_books:
+                    # print("borrow:\n",borrow.to_dict())
 
-                lista.controls.append(
+                    # assuming that everyone is responsable and returns before the limit date... (yes unlikely)
+                    if borrow.return_date >= datetime.now(tz=ZoneInfo("UTC")).strftime("%d/%m/%Y-%H:%M:%S"):
+                        status = f.Icon(f.Icons.ALARM, color=f.Colors.ORANGE)
+                    else:
+                        status = f.Icon(f.Icons.APPROVAL, color=f.Colors.GREEN)
 
-                    f.Card(
+                    btn = f.IconButton(
+                        f.Icons.UPDATE,
+                        icon_color=f.Colors.BLUE,
+                        tooltip="Return Book",
+                    )
+
+                    card = f.Card(
                         content=f.Container(
                             padding=12,
                             content=f.Row(
@@ -281,22 +341,11 @@ def list_borrowed_books_by_person(page, requester):
                                         ],
                                         spacing=5,
                                     ),
-                                    # f.Row(
-                                    #     [
-                                    #         f.IconButton(
-                                    #             f.Icons.EDIT,
-                                    #             icon_color=f.Colors.BLUE,
-                                    #             tooltip="Atualizar",
-                                    #             on_click=lambda e, p=consult: atualizar_consulta(page, p),
-                                    #         ),
-                                    #         f.IconButton(
-                                    #             f.Icons.DELETE,
-                                    #             icon_color=f.Colors.RED,
-                                    #             tooltip="Apagar",
-                                    #             on_click=lambda e, p=consult: apagar_consulta(page, p),
-                                    #         ),
-                                    #     ]
-                                    # )
+                                    f.Row(
+                                        [
+                                            btn
+                                        ]
+                                    )
 
                                 ],
                                 alignment=f.MainAxisAlignment.SPACE_BETWEEN,
@@ -304,7 +353,18 @@ def list_borrowed_books_by_person(page, requester):
                         ),
                         elevation=2
                     )
-                )
+                    
+                    def on_return_click(e, b=borrow, c=card):
+                        return_book_and_remove(db=db, borrow=b, card=c)
+
+                    btn.on_click = on_return_click #lambda e, b=borrow, c=card: return_book(db=db, borrow=b, card=c),
+                    lista.controls.append(card)
+
+                requester.value = None
+                data_ini.value = ""
+                date_fin.value = ""
+
+
 
     page.add(
         f.Container(
@@ -312,6 +372,17 @@ def list_borrowed_books_by_person(page, requester):
                 [
                     f.Text("Filter By Requester", size=30),
                     requester,
+                    f.Row(
+                        [
+                            data_ini,
+                            f.IconButton(f.Icons.CALENDAR_MONTH, on_click=open_date_picker_ini),
+                            date_fin,
+                            f.IconButton(f.Icons.CALENDAR_MONTH, on_click=open_date_picker_fin),
+                            # f.Button("Pesquisar Consultas", width=180, on_click=realizadas)
+                        ],
+                        spacing=20,
+                        alignment=f.MainAxisAlignment.CENTER
+                    ),
                     lista,
                     f.Button("Show List", on_click=showList)
                 ],
@@ -324,35 +395,34 @@ def list_borrowed_books_by_person(page, requester):
     ) 
 
 
-# def listar_total(page):
-#     # ficheiros_paciente.atualizar_lista_dados(base_dados)
-#     with get_db() as db:    
-#         consults = get_all_consults(db)
-#         if not consults:
-#             janela = f.AlertDialog(
-#                 title="Informação",
-#                 content=f.Text(f"Ainda não foram registadas consultas!"),
-#                 actions=[
-#                     f.Button("OK", on_click=lambda e: fechar_janela())
-#                 ]
-#             )
-#         else:
-#             print(f"Existem até ao momento {len(consults)} consultas")
-#             janela = f.AlertDialog(
-#                 title="Informação",
-#                 content=f.Text(f"Existem até ao momento {len(consults)} consultas"),
-#                 actions=[
-#                     f.Button("OK", on_click=lambda e: fechar_janela())
-#                 ]
-#             )
+def show_total_borrow_counter(page):
+    with get_db() as db:    
+        borrows = get_all_borrows(db)
+        if not borrows["borrowed_list"]:
+            janela = f.AlertDialog(
+                title="Informação",
+                content=f.Text(f"No book as been borrowed!"),
+                actions=[
+                    f.Button("OK", on_click=lambda e: fechar_janela())
+                ]
+            )
+        else:
+            print(f"There have been {borrows['borrowed_counter']} borrowed books until now")
+            janela = f.AlertDialog(
+                title="Informação",
+                content=f.Text(f"There have been {borrows['borrowed_counter']} borrowed books until now"),
+                actions=[
+                    f.Button("OK", on_click=lambda e: fechar_janela())
+                ]
+            )
 
-#         def fechar_janela():
-#             janela.open = False
-#             page.update()
+        def fechar_janela():
+            janela.open = False
+            page.update()
 
-#         page.show_dialog(janela)
-#         janela.open = True
-#         page.update()
+        page.show_dialog(janela)
+        janela.open = True
+        page.update()
 
 
 
